@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product CRUD - Management Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .health-status {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .status-ok {
+            color: #10b981;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .status-error {
+            color: #ef4444;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background 0.3s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .btn-update {
+            background: #f59e0b;
+        }
+
+        .btn-update:hover {
+            background: #d97706;
+        }
+
+        .btn-delete {
+            background: #ef4444;
+        }
+
+        .btn-delete:hover {
+            background: #dc2626;
+        }
+
+        .btn-cancel {
+            background: #6b7280;
+            margin-left: 10px;
+        }
+
+        .btn-cancel:hover {
+            background: #4b5563;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        tr:hover {
+            background: #f9fafb;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .actions button {
+            padding: 8px 16px;
+            font-size: 14px;
+            margin-top: 0;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            border-left: 4px solid #10b981;
+        }
+
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid #ef4444;
+        }
+
+        .loading {
+            text-align: center;
+            color: #667eea;
+            font-size: 1.2rem;
+            padding: 20px;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #6b7280;
+            padding: 40px;
+            font-size: 1.1rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .actions {
+                flex-direction: column;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📦 Product Management Dashboard</h1>
+
+        <!-- Health Status -->
+        <div class="health-status">
+            <div id="healthStatus">Checking server status...</div>
+        </div>
+
+        <!-- Message Area -->
+        <div id="messageArea"></div>
+
+        <!-- Create Product Form -->
+        <div class="card">
+            <h2>➕ Add New Product</h2>
+            <form id="productForm">
+                <div class="grid">
+                    <div class="form-group">
+                        <label for="name">Product Name *</label>
+                        <input type="text" id="name" required placeholder="e.g., Laptop">
+                    </div>
+                    <div class="form-group">
+                        <label for="price">Price *</label>
+                        <input type="number" id="price" step="0.01" min="0" required placeholder="e.g., 999.99">
+                    </div>
+                    <div class="form-group">
+                        <label for="quantity">Quantity *</label>
+                        <input type="number" id="quantity" min="0" required placeholder="e.g., 10">
+                    </div>
+                </div>
+                <button type="submit">Add Product</button>
+            </form>
+        </div>
+
+        <!-- Update Product Form (Hidden by default) -->
+        <div class="card" id="updateCard" style="display: none;">
+            <h2>✏️ Update Product</h2>
+            <form id="updateForm">
+                <input type="hidden" id="updateId">
+                <div class="grid">
+                    <div class="form-group">
+                        <label for="updateName">Product Name *</label>
+                        <input type="text" id="updateName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="updatePrice">Price *</label>
+                        <input type="number" id="updatePrice" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="updateQuantity">Quantity *</label>
+                        <input type="number" id="updateQuantity" min="0" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn-update">Update Product</button>
+                <button type="button" class="btn-cancel" onclick="cancelUpdate()">Cancel</button>
+            </form>
+        </div>
+
+        <!-- Products List -->
+        <div class="card">
+            <h2>📋 Products List</h2>
+            <div id="productsTable">
+                <div class="loading">Loading products...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api/products';
+        const HEALTH_URL = 'http://localhost:3000/health';
+
+        // Check server health
+        async function checkHealth() {
+            try {
+                const response = await fetch(HEALTH_URL);
+                const data = await response.json();
+                const statusDiv = document.getElementById('healthStatus');
+                if (data.status === 'ok') {
+                    statusDiv.innerHTML = '✅ Server Status: <span class="status-ok">Online</span>';
+                } else {
+                    statusDiv.innerHTML = '❌ Server Status: <span class="status-error">Error</span>';
+                }
+            } catch (error) {
+                const statusDiv = document.getElementById('healthStatus');
+                statusDiv.innerHTML = '❌ Server Status: <span class="status-error">Offline</span>';
+            }
+        }
+
+        // Show message
+        function showMessage(message, type) {
+            const messageArea = document.getElementById('messageArea');
+            messageArea.innerHTML = `<div class="message ${type}">${message}</div>`;
+            setTimeout(() => {
+                messageArea.innerHTML = '';
+            }, 5000);
+        }
+
+        // Load all products
+        async function loadProducts() {
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+                const productsTable = document.getElementById('productsTable');
+
+                if (data.count === 0) {
+                    productsTable.innerHTML = '<div class="empty-state">No products found. Add your first product!</div>';
+                    return;
+                }
+
+                let html = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Price</th>
+                                <th>Quantity</th>
+                                <th>Created At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                data.data.forEach(product => {
+                    const date = new Date(product.createdAt).toLocaleDateString();
+                    html += `
+                        <tr>
+                            <td>${product.name}</td>
+                            <td>$${parseFloat(product.price).toFixed(2)}</td>
+                            <td>${product.quantity}</td>
+                            <td>${date}</td>
+                            <td class="actions">
+                                <button class="btn-update" onclick="editProduct('${product._id}', '${product.name}', ${product.price}, ${product.quantity})">Edit</button>
+                                <button class="btn-delete" onclick="deleteProduct('${product._id}', '${product.name}')">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table>';
+                productsTable.innerHTML = html;
+            } catch (error) {
+                showMessage('Error loading products: ' + error.message, 'error');
+            }
+        }
+
+        // Create product
+        document.getElementById('productForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const product = {
+                name: document.getElementById('name').value,
+                price: parseFloat(document.getElementById('price').value),
+                quantity: parseInt(document.getElementById('quantity').value)
+            };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(product)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage('✅ Product created successfully!', 'success');
+                    document.getElementById('productForm').reset();
+                    loadProducts();
+                } else {
+                    showMessage('❌ Error: ' + data.message, 'error');
+                }
+            } catch (error) {
+                showMessage('❌ Error creating product: ' + error.message, 'error');
+            }
+        });
+
+        // Edit product
+        function editProduct(id, name, price, quantity) {
+            document.getElementById('updateId').value = id;
+            document.getElementById('updateName').value = name;
+            document.getElementById('updatePrice').value = price;
+            document.getElementById('updateQuantity').value = quantity;
+            document.getElementById('updateCard').style.display = 'block';
+            document.getElementById('updateCard').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Cancel update
+        function cancelUpdate() {
+            document.getElementById('updateForm').reset();
+            document.getElementById('updateCard').style.display = 'none';
+        }
+
+        // Update product
+        document.getElementById('updateForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const id = document.getElementById('updateId').value;
+            const product = {
+                name: document.getElementById('updateName').value,
+                price: parseFloat(document.getElementById('updatePrice').value),
+                quantity: parseInt(document.getElementById('updateQuantity').value)
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(product)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage('✅ Product updated successfully!', 'success');
+                    cancelUpdate();
+                    loadProducts();
+                } else {
+                    showMessage('❌ Error: ' + data.message, 'error');
+                }
+            } catch (error) {
+                showMessage('❌ Error updating product: ' + error.message, 'error');
+            }
+        });
+
+        // Delete product
+        async function deleteProduct(id, name) {
+            if (!confirm(`Are you sure you want to delete "${name}"?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/${id}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage('✅ Product deleted successfully!', 'success');
+                    loadProducts();
+                } else {
+                    showMessage('❌ Error: ' + data.message, 'error');
+                }
+            } catch (error) {
+                showMessage('❌ Error deleting product: ' + error.message, 'error');
+            }
+        }
+
+        // Initial load
+        checkHealth();
+        loadProducts();
+
+        // Refresh health status every 30 seconds
+        setInterval(checkHealth, 30000);
+    </script>
+</body>
+</html>
