@@ -98,11 +98,11 @@ git --version
 # Navigate to home directory
 cd ~
 
-# Clone your repository
-git clone https://github.com/YOUR_USERNAME/nodejs-crud-ec2.git
+# Clone your repository (replace with your GitHub username)
+git clone https://github.com/YOUR_USERNAME/nodejs-crud-clean.git
 
 # Navigate to project
-cd nodejs-crud-ec2
+cd nodejs-crud-clean
 ```
 
 ---
@@ -116,7 +116,7 @@ nano .env
 # Add these contents (press Ctrl+X, then Y, then Enter to save):
 PORT=3000
 NODE_ENV=production
-MONGO_URI=mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@YOUR_CLUSTER.mongodb.net/YOUR_DATABASE?retryWrites=true&w=majority
+MONGO_URI=mongodb+srv://crud_user:crud_user@cluster0.e0402j9.mongodb.net/crud_db?retryWrites=true&w=majority&appName=Cluster0
 ```
 
 **Important:** Replace with your actual MongoDB Atlas connection string!
@@ -169,6 +169,8 @@ You should see your Product Management Dashboard!
 
 ## 🔄 Setup GitHub Actions CI/CD (Automated Deployment)
 
+### Option A: Using GitHub-Hosted Runners (Default)
+
 ### Step 1: Prepare SSH Key
 
 On your local machine:
@@ -179,6 +181,11 @@ On your local machine:
 # -----BEGIN RSA PRIVATE KEY-----
 # ...content...
 # -----END RSA PRIVATE KEY-----
+
+# Note: For newer key formats, it might be:
+# -----BEGIN OPENSSH PRIVATE KEY-----
+# ...content...
+# -----END OPENSSH PRIVATE KEY-----
 ```
 
 ### Step 2: Add GitHub Secrets
@@ -199,7 +206,7 @@ On your local machine:
 
 ```bash
 # On your local machine
-cd nodejs-crud-ec2
+cd nodejs-crud-clean
 
 # Initialize git (if not already)
 git init
@@ -211,7 +218,245 @@ git add .
 git commit -m "Initial commit"
 
 # Add remote (create repo on GitHub first)
-git remote add origin https://github.com/YOUR_USERNAME/nodejs-crud-ec2.git
+git remote add origin https://github.com/YOUR_USERNAME/nodejs-crud-clean.git
+
+# Push to main branch
+git push -u origin main
+```
+
+### Step 4: Verify GitHub Actions
+
+1. Go to your GitHub repository
+2. Click on **Actions** tab
+3. You should see the deployment workflow running
+4. Wait for it to complete (green checkmark ✅)
+
+### Step 5: Test Automated Deployment
+
+Make a small change and push:
+
+```bash
+# Edit a file
+echo "# Test" >> README.md
+
+# Commit and push
+git add .
+git commit -m "Test automated deployment"
+git push
+
+# GitHub Actions will automatically:
+# 1. Run tests
+# 2. SSH into EC2
+# 3. Pull latest code
+# 4. Rebuild Docker containers
+# 5. Restart the application
+```
+
+---
+
+### Option B: Using Self-Hosted Runner on EC2 (Recommended for Production)
+
+Self-hosted runners provide better performance and avoid SSH complications.
+
+#### Step 1: Install Self-Hosted Runner on EC2
+
+Connect to your EC2 instance and run:
+
+```bash
+# Navigate to home directory
+cd ~
+
+# Create actions-runner folder
+mkdir actions-runner && cd actions-runner
+
+# Download the latest runner package
+curl -o actions-runner-linux-x64-2.331.0.tar.gz -L https://github.com/actions/runner/releases/download/v2.331.0/actions-runner-linux-x64-2.331.0.tar.gz
+
+# Optional: Validate the hash
+echo "5fcc01bd546ba5c3f1291c2803658ebd3cedb3836489eda3be357d41bfcf28a7  actions-runner-linux-x64-2.331.0.tar.gz" | shasum -a 256 -c
+
+# Extract the installer
+tar xzf ./actions-runner-linux-x64-2.331.0.tar.gz
+```
+
+#### Step 2: Configure the Runner
+
+Get your registration token from GitHub:
+1. Go to your repository on GitHub
+2. Click **Settings** → **Actions** → **Runners**
+3. Click **New self-hosted runner**
+4. Copy the token from the configuration command
+
+Then run on EC2:
+
+```bash
+# Configure the runner (replace TOKEN with your actual token)
+./config.sh --url https://github.com/YOUR_USERNAME/nodejs-crud-clean --token YOUR_TOKEN
+
+# When prompted:
+# - Runner group: Press Enter (default)
+# - Runner name: Press Enter (default) or enter custom name
+# - Work folder: Press Enter (default _work)
+# - Labels: Press Enter (default)
+```
+
+#### Step 3: Install Runner as a Service
+
+```bash
+# Install the service
+sudo ./svc.sh install
+
+# Start the service
+sudo ./svc.sh start
+
+# Check service status
+sudo ./svc.sh status
+
+# The runner will now start automatically on system boot
+```
+
+#### Step 4: Update GitHub Workflow
+
+Create or update `.github/workflows/deploy.yml`:
+
+```yaml
+name: Deploy to EC2 (Self-Hosted)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: self-hosted  # Use self-hosted runner
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Create .env file
+      run: |
+        echo "PORT=3000" > .env
+        echo "NODE_ENV=production" >> .env
+        echo "MONGO_URI=${{ secrets.MONGO_URI }}" >> .env
+    
+    - name: Build and deploy with Docker
+      run: |
+        docker-compose down
+        docker-compose up -d --build
+    
+    - name: Check deployment
+      run: |
+        sleep 10
+        curl -f http://localhost/health || exit 1
+    
+    - name: Clean up old Docker images
+      run: |
+        docker image prune -f
+```
+
+#### Step 5: Verify Runner Status
+
+1. Go to GitHub repository → **Settings** → **Actions** → **Runners**
+2. You should see your runner listed as **Idle** (green)
+3. Push a commit to trigger the workflow
+4. Watch the runner status change to **Active** during deployment
+
+#### Step 6: Test Self-Hosted Deployment
+
+```bash
+# On your local machine
+git add .
+git commit -m "Test self-hosted runner deployment"
+git push
+
+# The workflow will run directly on your EC2 instance
+# No SSH connection needed!
+```
+
+### Managing Self-Hosted Runner
+
+```bash
+# Check runner status
+cd ~/actions-runner
+sudo ./svc.sh status
+
+# Stop runner
+sudo ./svc.sh stop
+
+# Start runner
+sudo ./svc.sh start
+
+# Restart runner
+sudo ./svc.sh stop
+sudo ./svc.sh start
+
+# View runner logs
+journalctl -u actions.runner.*
+```
+
+### Benefits of Self-Hosted Runner
+
+✅ **Faster deployments** - No SSH overhead  
+✅ **Direct access** - Runner already on EC2  
+✅ **Easier secrets** - Only MONGO_URI needed  
+✅ **Better security** - No need to expose SSH keys  
+✅ **Auto-start** - Runs as system service  
+
+---
+
+## 🔄 Setup GitHub Actions CI/CD (Automated Deployment)
+
+### Step 1: Prepare SSH Key
+
+On your local machine:
+
+```bash
+# Open your EC2 private key file (.pem)
+# Copy the ENTIRE contents including:
+# -----BEGIN RSA PRIVATE KEY-----
+# ...content...
+# -----END RSA PRIVATE KEY-----
+
+# Note: For newer key formats, it might be:
+# -----BEGIN OPENSSH PRIVATE KEY-----
+# ...content...
+# -----END OPENSSH PRIVATE KEY-----
+```
+
+### Step 2: Add GitHub Secrets
+
+1. Go to your GitHub repository
+2. Click **Settings** → **Secrets and variables** → **Actions**
+3. Click **New repository secret**
+4. Add these 4 secrets:
+
+| Secret Name | Value | Example |
+|-------------|-------|---------|
+| `EC2_HOST` | Your EC2 public IP | `54.123.45.67` |
+| `EC2_USER` | SSH username | `ubuntu` (or `ec2-user` for Amazon Linux) |
+| `EC2_SSH_KEY` | Your private key content | (entire .pem file content) |
+| `MONGO_URI` | MongoDB connection string | `mongodb+srv://user:pass@cluster.mongodb.net/db` |
+
+### Step 3: Push Code to GitHub
+
+```bash
+# On your local machine
+cd nodejs-crud-clean
+
+# Initialize git (if not already)
+git init
+
+# Add all files
+git add .
+
+# Commit
+git commit -m "Initial commit"
+
+# Add remote (create repo on GitHub first)
+git remote add origin https://github.com/YOUR_USERNAME/nodejs-crud-clean.git
 
 # Push to main branch
 git push -u origin main
@@ -251,7 +496,7 @@ git push
 
 ### View Application Logs
 ```bash
-cd ~/nodejs-crud-ec2
+cd ~/nodejs-crud-clean
 docker-compose logs -f
 ```
 
@@ -282,7 +527,7 @@ docker ps
 
 ### Pull Latest Code Manually
 ```bash
-cd ~/nodejs-crud-ec2
+cd ~/nodejs-crud-clean
 git pull origin main
 docker-compose up -d --build
 ```
@@ -299,75 +544,77 @@ df -h
 docker system df
 ```
 
----
-
-## 🔒 Security Best Practices
-
-### 1. Update Security Group Rules
-- Restrict SSH (port 22) to your IP only
-- Keep HTTP (port 80) open to all (0.0.0.0/0)
-
-### 2. Setup Firewall (UFW)
+### Self-Hosted Runner Commands
 ```bash
-# Enable firewall
-sudo ufw allow 22/tcp    # SSH
-sudo ufw allow 80/tcp    # HTTP
-sudo ufw allow 443/tcp   # HTTPS (optional)
-sudo ufw enable
-sudo ufw status
-```
+# Check runner status
+cd ~/actions-runner
+sudo ./svc.sh status
 
-### 3. Setup SSL/HTTPS (Optional but Recommended)
+# Restart runner service
+sudo ./svc.sh restart
 
-#### Using Nginx + Let's Encrypt:
-
-```bash
-# Install Nginx
-sudo apt install nginx -y
-
-# Configure Nginx as reverse proxy
-sudo nano /etc/nginx/sites-available/nodejs-app
-
-# Add this configuration:
-server {
-    listen 80;
-    server_name your-domain.com www.your-domain.com;
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-
-# Enable the site
-sudo ln -s /etc/nginx/sites-available/nodejs-app /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl restart nginx
-
-# Install Certbot for SSL
-sudo apt install certbot python3-certbot-nginx -y
-
-# Get SSL certificate
-sudo certbot --nginx -d your-domain.com -d www.your-domain.com
-```
-
-### 4. Regular Updates
-```bash
-# Update system packages
-sudo apt update && sudo apt upgrade -y
-
-# Update Docker images
-docker-compose pull
-docker-compose up -d --build
+# Update runner (when new version available)
+cd ~/actions-runner
+./config.sh remove  # Remove current config
+# Download new version and reconfigure
 ```
 
 ---
 
 ## 🐛 Troubleshooting
+
+### Self-Hosted Runner Issues
+
+#### Runner Not Appearing in GitHub
+```bash
+# Check if service is running
+sudo ./svc.sh status
+
+# Check logs
+journalctl -u actions.runner.* -f
+
+# Restart service
+sudo ./svc.sh restart
+```
+
+#### Runner Offline
+```bash
+# Check network connectivity
+curl -I https://github.com
+
+# Restart runner
+cd ~/actions-runner
+sudo ./svc.sh stop
+sudo ./svc.sh start
+```
+
+#### Deployment Failed
+```bash
+# Check Docker permissions
+docker ps
+
+# If permission denied, add runner user to docker group
+sudo usermod -aG docker $(whoami)
+newgrp docker
+
+# Restart runner
+cd ~/actions-runner
+sudo ./svc.sh restart
+```
+
+#### Clean Runner Installation
+```bash
+# Stop and remove service
+cd ~/actions-runner
+sudo ./svc.sh stop
+sudo ./svc.sh uninstall
+./config.sh remove
+
+# Start fresh
+cd ~
+rm -rf actions-runner
+# Follow Step 1 again
+```
 
 ### Application Not Accessible
 ```bash
@@ -454,12 +701,12 @@ ssh -i your-key.pem ubuntu@YOUR_EC2_IP
 
 ### Project Directory on EC2
 ```bash
-cd ~/nodejs-crud-ec2
+cd ~/nodejs-crud-clean
 ```
 
 ### Quick Redeploy
 ```bash
-cd ~/nodejs-crud-ec2
+cd ~/nodejs-crud-clean
 git pull
 docker-compose up -d --build
 ```
@@ -480,8 +727,11 @@ docker-compose up -d --build
 - [ ] Application running (docker-compose up -d)
 - [ ] Health check passing (curl http://localhost/health)
 - [ ] Application accessible from browser
+- [ ] Self-hosted runner installed (Optional but recommended)
+- [ ] Runner service running and online in GitHub
+- [ ] Workflow updated to use self-hosted runner
 - [ ] GitHub repository created
-- [ ] GitHub secrets configured (EC2_HOST, EC2_USER, EC2_SSH_KEY, MONGO_URI)
+- [ ] GitHub secrets configured (MONGO_URI only for self-hosted)
 - [ ] Code pushed to GitHub
 - [ ] GitHub Actions workflow running successfully
 - [ ] Automated deployment tested
