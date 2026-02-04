@@ -285,4 +285,4 @@ curl -X DELETE http://your-ec2-ip/api/products/<product-id>
 
 ## 📄 License
 
-MIT License
+MIT License  
