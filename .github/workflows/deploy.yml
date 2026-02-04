@@ -1,0 +1,35 @@
+name: Deploy to EC2 (Self-Hosted)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: self-hosted  # Use self-hosted runner
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Create .env file
+      run: |
+        echo "PORT=3000" > .env
+        echo "NODE_ENV=production" >> .env
+        echo "MONGO_URI=${{ secrets.MONGO_URI }}" >> .env
+    
+    - name: Build and deploy with Docker
+      run: |
+        docker-compose down
+        docker-compose up -d --build
+    
+    - name: Check deployment
+      run: |
+        sleep 10
+        curl -f http://localhost/health || exit 1
+    
+    - name: Clean up old Docker images
+      run: |
+        docker image prune -f
