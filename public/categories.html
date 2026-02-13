@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Management Dashboard - CRUD Operations</title>
+    <title>Categories Manager - Dashboard</title>
     <style>
         * {
             margin: 0;
@@ -101,16 +101,16 @@
 
         .card {
             background: white;
-            border-radius: 15px;
-            padding: 30px;
+            border-radius: 10px;
+            padding: 25px;
             margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
         h2 {
             color: #667eea;
             margin-bottom: 20px;
-            font-size: 1.8rem;
+            font-size: 1.5rem;
         }
 
         .form-group {
@@ -255,18 +255,6 @@
             font-size: 1.1rem;
         }
 
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 15px;
-        }
-
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
         .status-badge {
             padding: 5px 10px;
             border-radius: 5px;
@@ -361,10 +349,6 @@
                 margin-left: 0;
             }
 
-            .grid, .grid-2 {
-                grid-template-columns: 1fr;
-            }
-
             .actions {
                 flex-direction: column;
             }
@@ -375,8 +359,8 @@
     <!-- Sidebar Navigation -->
     <div class="sidebar">
         <div class="sidebar-title">📊 Dashboard Menu</div>
-        <a href="index.html" class="nav-link active">📦 Products List</a>
-        <a href="categories.html" class="nav-link">🏷️ Categories Manager</a>
+        <a href="index.html" class="nav-link">📦 Products List</a>
+        <a href="categories.html" class="nav-link active">🏷️ Categories Manager</a>
     </div>
 
     <!-- Main Content -->
@@ -389,47 +373,50 @@
         <!-- Message Area -->
         <div id="messageArea"></div>
 
-        <!-- Products List -->
+        <!-- Categories List -->
         <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2 style="margin-bottom: 0;">📋 Products List</h2>
-                <button onclick="showAddProductModal()" style="margin-top: 0;">➕ Add New Product</button>
+                <h2 style="margin-bottom: 0;">🏷️ Categories List</h2>
+                <button onclick="showAddCategoryModal()" style="margin-top: 0;">➕ Add New Category</button>
             </div>
-            <div id="productsTable">
-                <div class="loading">Loading products...</div>
+            <div id="categoriesTable">
+                <div class="loading">Loading categories...</div>
             </div>
         </div>
-    </div> <!-- End of main-content -->
+    </div>
 
-    <!-- Product Modal -->
-    <div id="productModal" class="modal">
+    <!-- Category Modal -->
+    <div id="categoryModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 id="productModalTitle">➕ Add New Product</h2>
-                <button class="close-btn" onclick="closeProductModal()">&times;</button>
+                <h2 id="categoryModalTitle">➕ Add New Category</h2>
+                <button class="close-btn" onclick="closeCategoryModal()">&times;</button>
             </div>
-            <form id="productForm">
-                <input type="hidden" id="productId">
+            <form id="categoryForm">
+                <input type="hidden" id="categoryId">
                 <div class="form-group">
-                    <label for="name">Product Name *</label>
-                    <input type="text" id="name" required placeholder="e.g., Laptop">
+                    <label for="catName">Category Name *</label>
+                    <input type="text" id="catName" required placeholder="e.g., Electronics">
                 </div>
                 <div class="form-group">
-                    <label for="price">Price *</label>
-                    <input type="number" id="price" step="0.01" min="0" required placeholder="e.g., 999.99">
+                    <label for="catDescription">Description</label>
+                    <input type="text" id="catDescription" placeholder="e.g., Electronic devices and gadgets">
                 </div>
                 <div class="form-group">
-                    <label for="quantity">Quantity *</label>
-                    <input type="number" id="quantity" min="0" required placeholder="e.g., 10">
+                    <label for="catStatus">Status *</label>
+                    <select id="catStatus" required>
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                    </select>
                 </div>
-                <button type="submit" id="productSubmitBtn">Add Product</button>
-                <button type="button" class="btn-cancel" onclick="closeProductModal()">Cancel</button>
+                <button type="submit" id="categorySubmitBtn">Add Category</button>
+                <button type="button" class="btn-cancel" onclick="closeCategoryModal()">Cancel</button>
             </form>
         </div>
     </div>
 
     <script>
-        const PRODUCTS_API = '/api/products';
+        const CATEGORIES_API = '/api/categories';
         const HEALTH_URL = '/health';
 
         // Check server health
@@ -458,45 +445,43 @@
             }, 5000);
         }
 
-        // ==================== PRODUCTS CRUD ====================
-
-        // Show Add Product Modal
-        function showAddProductModal() {
-            document.getElementById('productModalTitle').textContent = '➕ Add New Product';
-            document.getElementById('productSubmitBtn').textContent = 'Add Product';
-            document.getElementById('productId').value = '';
-            document.getElementById('productForm').reset();
-            document.getElementById('productModal').classList.add('show');
+        // Show Add Category Modal
+        function showAddCategoryModal() {
+            document.getElementById('categoryModalTitle').textContent = '➕ Add New Category';
+            document.getElementById('categorySubmitBtn').textContent = 'Add Category';
+            document.getElementById('categoryId').value = '';
+            document.getElementById('categoryForm').reset();
+            document.getElementById('categoryModal').classList.add('show');
         }
 
-        // Show Edit Product Modal
-        function editProduct(id, name, price, quantity) {
-            document.getElementById('productModalTitle').textContent = '✏️ Edit Product';
-            document.getElementById('productSubmitBtn').textContent = 'Update Product';
-            document.getElementById('productSubmitBtn').className = 'btn-update';
-            document.getElementById('productId').value = id;
-            document.getElementById('name').value = name;
-            document.getElementById('price').value = price;
-            document.getElementById('quantity').value = quantity;
-            document.getElementById('productModal').classList.add('show');
+        // Show Edit Category Modal
+        function editCategory(id, name, description, status) {
+            document.getElementById('categoryModalTitle').textContent = '✏️ Edit Category';
+            document.getElementById('categorySubmitBtn').textContent = 'Update Category';
+            document.getElementById('categorySubmitBtn').className = 'btn-update';
+            document.getElementById('categoryId').value = id;
+            document.getElementById('catName').value = name;
+            document.getElementById('catDescription').value = description;
+            document.getElementById('catStatus').value = status;
+            document.getElementById('categoryModal').classList.add('show');
         }
 
-        // Close Product Modal
-        function closeProductModal() {
-            document.getElementById('productModal').classList.remove('show');
-            document.getElementById('productForm').reset();
-            document.getElementById('productSubmitBtn').className = '';
+        // Close Category Modal
+        function closeCategoryModal() {
+            document.getElementById('categoryModal').classList.remove('show');
+            document.getElementById('categoryForm').reset();
+            document.getElementById('categorySubmitBtn').className = '';
         }
 
-        // Load all products
-        async function loadProducts() {
+        // Load all categories
+        async function loadCategories() {
             try {
-                const response = await fetch(PRODUCTS_API);
+                const response = await fetch(CATEGORIES_API);
                 const data = await response.json();
-                const productsTable = document.getElementById('productsTable');
+                const categoriesTable = document.getElementById('categoriesTable');
 
                 if (data.count === 0) {
-                    productsTable.innerHTML = '<div class="empty-state">No products found. Add your first product!</div>';
+                    categoriesTable.innerHTML = '<div class="empty-state">No categories found. Add your first category!</div>';
                     return;
                 }
 
@@ -505,8 +490,8 @@
                         <thead>
                             <tr>
                                 <th>Name</th>
-                                <th>Price</th>
-                                <th>Quantity</th>
+                                <th>Description</th>
+                                <th>Status</th>
                                 <th>Created At</th>
                                 <th>Actions</th>
                             </tr>
@@ -514,92 +499,93 @@
                         <tbody>
                 `;
 
-                data.data.forEach(product => {
-                    const date = new Date(product.createdAt).toLocaleDateString();
+                data.data.forEach(category => {
+                    const date = new Date(category.createdAt).toLocaleDateString();
+                    const statusClass = category.status === 'Active' ? 'status-active' : 'status-inactive';
                     html += `
                         <tr>
-                            <td>${product.name}</td>
-                            <td>$${parseFloat(product.price).toFixed(2)}</td>
-                            <td>${product.quantity}</td>
+                            <td>${category.name}</td>
+                            <td>${category.description || 'N/A'}</td>
+                            <td><span class="status-badge ${statusClass}">${category.status}</span></td>
                             <td>${date}</td>
                             <td class="actions">
-                                <button class="btn-update" onclick="editProduct('${product._id}', '${product.name}', ${product.price}, ${product.quantity})">Edit</button>
-                                <button class="btn-delete" onclick="deleteProduct('${product._id}', '${product.name}')">Delete</button>
+                                <button class="btn-update" onclick="editCategory('${category._id}', '${category.name}', '${category.description || ''}', '${category.status}')">Edit</button>
+                                <button class="btn-delete" onclick="deleteCategory('${category._id}', '${category.name}')">Delete</button>
                             </td>
                         </tr>
                     `;
                 });
 
                 html += '</tbody></table>';
-                productsTable.innerHTML = html;
+                categoriesTable.innerHTML = html;
             } catch (error) {
-                showMessage('Error loading products: ' + error.message, 'error');
+                showMessage('Error loading categories: ' + error.message, 'error');
             }
         }
 
-        // Create/Update product
-        document.getElementById('productForm').addEventListener('submit', async (e) => {
+        // Create/Update category
+        document.getElementById('categoryForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const productId = document.getElementById('productId').value;
-            const product = {
-                name: document.getElementById('name').value,
-                price: parseFloat(document.getElementById('price').value),
-                quantity: parseInt(document.getElementById('quantity').value)
+            const categoryId = document.getElementById('categoryId').value;
+            const category = {
+                name: document.getElementById('catName').value,
+                description: document.getElementById('catDescription').value,
+                status: document.getElementById('catStatus').value
             };
 
             try {
-                const isUpdate = productId !== '';
+                const isUpdate = categoryId !== '';
                 const response = await fetch(
-                    isUpdate ? `${PRODUCTS_API}/${productId}` : PRODUCTS_API,
+                    isUpdate ? `${CATEGORIES_API}/${categoryId}` : CATEGORIES_API,
                     {
                         method: isUpdate ? 'PUT' : 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(product)
+                        body: JSON.stringify(category)
                     }
                 );
 
                 const data = await response.json();
 
                 if (data.success) {
-                    showMessage(`✅ Product ${isUpdate ? 'updated' : 'created'} successfully!`, 'success');
-                    closeProductModal();
-                    loadProducts();
+                    showMessage(`✅ Category ${isUpdate ? 'updated' : 'created'} successfully!`, 'success');
+                    closeCategoryModal();
+                    loadCategories();
                 } else {
                     showMessage('❌ Error: ' + data.message, 'error');
                 }
             } catch (error) {
-                showMessage(`❌ Error ${productId ? 'updating' : 'creating'} product: ` + error.message, 'error');
+                showMessage(`❌ Error ${categoryId ? 'updating' : 'creating'} category: ` + error.message, 'error');
             }
         });
 
-        // Delete product
-        async function deleteProduct(id, name) {
+        // Delete category
+        async function deleteCategory(id, name) {
             if (!confirm(`Are you sure you want to delete "${name}"?`)) {
                 return;
             }
 
             try {
-                const response = await fetch(`${PRODUCTS_API}/${id}`, {
+                const response = await fetch(`${CATEGORIES_API}/${id}`, {
                     method: 'DELETE'
                 });
 
                 const data = await response.json();
 
                 if (data.success) {
-                    showMessage('✅ Product deleted successfully!', 'success');
-                    loadProducts();
+                    showMessage('✅ Category deleted successfully!', 'success');
+                    loadCategories();
                 } else {
                     showMessage('❌ Error: ' + data.message, 'error');
                 }
             } catch (error) {
-                showMessage('❌ Error deleting product: ' + error.message, 'error');
+                showMessage('❌ Error deleting category: ' + error.message, 'error');
             }
         }
 
         // Initial load
         checkHealth();
-        loadProducts();
+        loadCategories();
 
         // Refresh health status every 30 seconds
         setInterval(checkHealth, 30000);
